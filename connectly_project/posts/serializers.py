@@ -1,11 +1,12 @@
 from rest_framework import serializers
 from .models import User, Post, Comment
-
+from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'created_at']
+        fields = ['username', 'email']  # Exclude sensitive fields like password
+
 
 
 class PostSerializer(serializers.ModelSerializer):
