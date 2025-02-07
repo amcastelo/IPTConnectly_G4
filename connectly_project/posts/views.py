@@ -1,13 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User, Post, Comment
+from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from django.contrib.auth.models import Group, User
 from django.contrib.auth import authenticate
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
-from .permissions import IsPostAuthor
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .permissions import IsPostAuthor, IsAdmin
 
 
 class UserListCreate(APIView):
@@ -18,25 +18,18 @@ class UserListCreate(APIView):
 
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
 
-            admin_group = Group.objects.create(name="Admin")
-            user = User.objects.get(username="admin_user")
-            user.groups.add(admin_group)
-
-            user = User.objects.create_user(username="new_user", password="secure_pass123")
-            print(user.password)  # Outputs a hashed password
-
-            user = authenticate(username="new_user", password="secure_pass123")
-            if user is not None:
-                print("Authentication successful!")
-            else:
-                print("Invalid credentials.")
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if username and password and email:
+            try:
+                user = User.objects.create_user(username=username, password=password, email=email)
+                return Response({"message": "User created successfully!"}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Username, password, and email are required."}, status=status.HTTP_400_BAD_REQUEST)
    
 
     
@@ -54,6 +47,27 @@ class PostListCreate(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PostSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        post.delete()
+        return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentListCreate(APIView):
@@ -70,8 +84,30 @@ class CommentListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def patch(self, request, pk):
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CommentSerializer(comment, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        comment.delete()
+        return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    
 class PostDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsPostAuthor]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated, IsPostAuthor | IsAdmin]
 
 
     def get(self, request, pk):
