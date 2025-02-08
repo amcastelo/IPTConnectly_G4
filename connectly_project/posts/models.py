@@ -3,10 +3,22 @@ from django.contrib.auth.models import User
 
 
 class Post(models.Model):
+    TEXT = 'text'
+    IMAGE = 'image'
+    VIDEO = 'video'
+
+    POST_TYPES = [
+        (TEXT, 'Text'),
+        (IMAGE, 'Image'),
+        (VIDEO, 'Video'),
+    ]
+
+    title = models.CharField(max_length=255)
     content = models.TextField()
     author = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE)
+    post_type = models.CharField(max_length=10, choices=POST_TYPES, default=TEXT)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    metadata = models.JSONField(default=dict)
 
     def __str__(self):
         return f"Post by {self.author.username} at {self.created_at}"

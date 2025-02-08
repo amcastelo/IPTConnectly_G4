@@ -15,8 +15,12 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'author', 'created_at', 'comments']
+        fields = ['id', 'title', 'content', 'author', 'created_at', 'comments']
 
+    def validate_author(self, value):
+        if not User.objects.filter(id=value.id).exists():
+            raise serializers.ValidationError("Author not found.")
+        return value
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
