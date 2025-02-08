@@ -53,13 +53,16 @@ class PostListCreate(APIView):
         try:
             post = PostFactory.create_post(
                 post_type=data['post_type'],
-                title=['title'],
+                title=data['title'],
                 author=data.get('author'),
                 content=data.get('content', ''),
                 metadata=data.get('metadata', {})
             )
             logger.info(f"Post created successfully: ID {post.id}")
-            return Response({'message': 'Post created successfully!', 'post_id': post.id,}, status=status.HTTP_201_CREATED)
+
+            serializer = PostSerializer(post)
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

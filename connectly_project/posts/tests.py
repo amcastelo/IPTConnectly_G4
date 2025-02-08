@@ -1,5 +1,5 @@
 from django.test import TestCase
-from Singleton.config_manager import ConfigManager
+from posts.Singleton.config_manager import ConfigManager
 # Create your tests here.
 
 class ConfigManagerTest(TestCase):
