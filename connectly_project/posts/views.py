@@ -11,10 +11,23 @@ from .permissions import IsPostAuthor, IsAdmin, IsPostAuthorOrAdmin
 from posts.Singleton.logger_singleton import LoggerSingleton
 from posts.Factories.post_factory import PostFactory
 from posts.Factories.like_factory import LikeFactory
+from django.shortcuts import render
+from allauth.socialaccount.models import SocialToken, SocialAccount
 
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
 
+def check_google_token(user):
+    google_account = SocialAccount.objects.filter(user=user, provider='google').first()
+    if google_account:
+        token = SocialToken.objects.filter(account=google_account).first()
+        if token:
+            print(f"Access Token: {token.token}")
+        else:
+            print("❌ No token found!")
+
+def login_view(request):
+    return render(request, 'login.html')
 
 class UserListCreate(APIView):
     def get(self, request):

@@ -172,7 +172,32 @@ SOCIALACCOUNT_PROVIDERS = {
             'secret': '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',
             'key': ''
         },
-        'SCOPE': ['profile', 'email'],
+        'SCOPE': [
+            'profile',
+            'email',
+            'openid',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
+            'prompt': 'consent',
+        },
     }
 }
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],  # Add this line
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.request',  # Required for allauth
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+SOCIALACCOUNT_STORE_TOKENS = True

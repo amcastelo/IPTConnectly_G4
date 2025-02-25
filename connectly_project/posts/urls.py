@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserListCreate, PostListCreate, CommentListCreate, ProtectedView, PostDetailView, ToggleLikeView
+from .views import UserListCreate, PostListCreate, CommentListCreate, ProtectedView, PostDetailView, ToggleLikeView, login_view
 from rest_framework.authtoken.views import obtain_auth_token
 
 
@@ -13,5 +13,6 @@ urlpatterns = [
     path('<int:pk>/', PostDetailView.as_view(), name='post-detail'),
     path('pv/', ProtectedView.as_view(), name='protected-view'),
     path('token-auth/', obtain_auth_token, name='obtain-token-auth'),
+    path('login/', login_view, name='login'),
 ]
 
