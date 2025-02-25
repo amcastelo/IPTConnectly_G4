@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsPostAuthor, IsAdmin, IsPostAuthorOrAdmin
 from posts.Singleton.logger_singleton import LoggerSingleton
 from posts.Factories.post_factory import PostFactory
+from posts.Factories.like_factory import LikeFactory
 
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
@@ -162,7 +163,26 @@ class CommentListCreate(APIView):
     def get_authenticators(self):
         if self.request.method in ["PATCH", "DELETE"]:
             return [TokenAuthentication()]
-        return [] 
+        return []
+
+class ToggleLikeView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        post = self.get_post(post_id)
+        if not post:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        like = request.data.get("like", True)  # Default to True (like)
+        response_data = LikeFactory.toggle_like(request.user, post, like)
+        return Response({"message": response_data["message"]}, status=response_data["status"])
+
+    def get_post(self, post_id):
+        try:
+            return Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return None 
 
 
 class PostDetailView(APIView):
