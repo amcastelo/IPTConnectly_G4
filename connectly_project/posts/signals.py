@@ -42,7 +42,7 @@ def check_google_token(user):
     
     # Wait to ensure the token is stored
     if google_account:
-        time.sleep(10)  # Wait 3 seconds before checking
+        time.sleep(3)  # Wait 3 seconds before checking
         
         token = SocialToken.objects.filter(account=google_account).first()
         if token:

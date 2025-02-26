@@ -13,6 +13,7 @@ from posts.Factories.post_factory import PostFactory
 from posts.Factories.like_factory import LikeFactory
 from django.shortcuts import render
 from allauth.socialaccount.models import SocialToken, SocialAccount
+from .authentications import BearerAuthentication
 
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
@@ -68,7 +69,7 @@ class PostListCreate(APIView):
             post = PostFactory.create_post(
                 post_type=data['post_type'],
                 title=data['title'],
-                author=data.get('author'),
+                author=request.user.id,
                 content=data.get('content', ''),
                 metadata=data.get('metadata', {})
             )
@@ -114,11 +115,15 @@ class PostListCreate(APIView):
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
             return [IsAuthenticated(), IsPostAuthorOrAdmin()] 
+        elif self.request.method in ["POST"]:
+            return [IsAuthenticated()]
         return [] 
     
     def get_authenticators(self):
         if self.request.method in ["PATCH", "DELETE"]:
             return [TokenAuthentication()]
+        elif self.request.method in ["POST"]:
+            return [BearerAuthentication()]
         return []
 
 class CommentListCreate(APIView):
@@ -214,7 +219,7 @@ class PostDetailView(APIView):
 
 
 class ProtectedView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [BearerAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

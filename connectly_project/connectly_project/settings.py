@@ -201,3 +201,12 @@ TEMPLATES = [
 ]
 
 SOCIALACCOUNT_STORE_TOKENS = True
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'posts.authentications.BearerAuthentication',  # Reference to your custom authentication class
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
