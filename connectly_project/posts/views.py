@@ -14,6 +14,8 @@ from posts.Factories.like_factory import LikeFactory
 from django.shortcuts import render
 from allauth.socialaccount.models import SocialToken, SocialAccount
 from .authentications import BearerAuthentication
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
@@ -225,3 +227,15 @@ class ProtectedView(APIView):
     def get(self, request):
         logger.info(f"Protected route accessed by '{request.user}'.")
         return Response({"message": "Authenticated!"})
+
+@login_required
+def fetch_google_token(request):
+    try:
+        social_token = SocialToken.objects.get(account__user=request.user, account__provider='google')
+        return JsonResponse({'access_token': social_token.token})
+    except SocialToken.DoesNotExist:
+        return JsonResponse({'error': 'Token not found'}, status=404)
+    
+@login_required
+def dashboard_view(request):
+    return render(request, 'dashboard.html')

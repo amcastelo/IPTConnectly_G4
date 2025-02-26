@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <script>
+        // Fetch and store the Google token in sessionStorage
+        async function storeGoogleToken() {
+            try {
+                const response = await fetch('/posts/api/get-google-token/');
+                if (!response.ok) throw new Error('Failed to fetch token');
+
+                const data = await response.json();
+                sessionStorage.setItem('googleAccessToken', data.access_token);
+                console.log('Google token stored:', data.access_token);
+            } catch (error) {
+                console.error('Error fetching Google token:', error);
+            }
+        }
+
+        // Call the ProtectedView API when button is clicked
+        async function accessProtectedView() {
+            const token = sessionStorage.getItem('googleAccessToken');
+            if (!token) {
+                console.error('No Google access token available');
+                alert('Please log in to access this feature.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/posts/pv/', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                });
+
+                if (!response.ok) throw new Error('Access denied or invalid token.');
+
+                const data = await response.json();
+                console.log('Protected API Response:', data);
+
+                // Display the API response on the page
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('Error accessing protected view:', error);
+                alert('Error accessing protected view.');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const isAuthenticated = "{{ user.is_authenticated|lower }}" === "true";
+            if (isAuthenticated) {
+                storeGoogleToken();
+            }
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Welcome to the Dashboard</h1>
+
+    <!-- Button to call the Protected API -->
+    <button onclick="accessProtectedView()">Access Protected View</button>
+
+    <!-- Display API Response -->
+    <pre id="api-response">API Response will appear here...</pre>
+
+    <a href="/accounts/logout/">Logout</a>
+</body>
+
+</html>

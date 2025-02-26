@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+
 from rest_framework.authtoken.views import obtain_auth_token
 
 
@@ -14,5 +15,7 @@ urlpatterns = [
     path('pv/', views.ProtectedView.as_view(), name='protected-view'),
     path('token-auth/', obtain_auth_token, name='obtain-token-auth'),
     path('login/', views.login_view, name='login'),
+    path('api/get-google-token/', views.fetch_google_token, name='get_google_token'),
+    path('dashboard/', views.dashboard_view, name='dashboard')
 ]
 

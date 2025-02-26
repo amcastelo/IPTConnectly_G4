@@ -159,7 +159,7 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 
 # Redirects
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/posts/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
@@ -184,21 +184,24 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+import os
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # Add this line
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.template.context_processors.request',  # Required for allauth
                 'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
+
 
 SOCIALACCOUNT_STORE_TOKENS = True
 
