@@ -3,9 +3,6 @@ Group 4
 # Instructions:
 
 ### 1. **Install Dependencies:**
-First move to project folder: *cd connectly_project*
-
-Input or copy & paste into python terminal: *pip install -r requirements.txt*
 
 ### 2. **Migrate Changes**
 In terminal type:
