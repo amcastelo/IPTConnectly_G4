@@ -20,8 +20,14 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict)
 
+    def like_count(self):
+        return self.likes.count()
+    
     def __str__(self):
         return f"Post by {self.author.username} at {self.created_at}"
+    
+    def comment_count(self):
+        return self.comments.count()
 
 
 class Comment(models.Model):

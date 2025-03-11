@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>User List</title>
+    <script>
+        let users = []; // Store fetched users globally
+
+        // Fetch posts of the logged-in user
+async function fetchUserPosts() {
+    try {
+        const token = sessionStorage.getItem('googleAccessToken');
+        const response = await fetch('/posts/paginated-posts/?user_posts=true', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch user posts.');
+
+        const data = await response.json();
+        displayPosts(data.results);
+
+        nextPage = data.next;
+        prevPage = data.previous;
+        updatePaginationButtons();
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+    }
+}
+
+        // Display users in the user list
+        function displayUsers(userList) {
+            const userListContainer = document.getElementById('user-list-response');
+            userListContainer.innerHTML = '';
+
+            if (userList.length === 0) {
+                userListContainer.textContent = 'No users found.';
+                return;
+            }
+
+            userList.forEach(user => {
+                const userItem = document.createElement('div');
+                userItem.textContent = `${user.id}: ${user.username} - ${user.email}`;
+                userListContainer.appendChild(userItem);
+            });
+        }
+
+        // Search users by username or email
+        function searchUsers() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filteredUsers = users.filter(user =>
+                user.username.toLowerCase().includes(query) ||
+                user.email.toLowerCase().includes(query)
+            );
+            displayUsers(filteredUsers);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', fetchUserList);
+    </script>
+</head>
+
+<body>
+    <h1>User List</h1>
+
+    <!-- Search Bar -->
+    <input type="text" id="search-input" placeholder="Search users..." onkeyup="searchUsers()">
+
+    <!-- User List Container -->
+    <div id="user-list-response">User list will appear here...</div>
+
+    <!-- Navigation Buttons -->
+    <button onclick="window.location.href='/posts/dashboard/'">Back to Dashboard</button>
+    <a href="/accounts/logout/">Logout</a>
+</body>
+
+</html>

@@ -30,6 +30,11 @@ from django.utils import timezone
 #             raise AuthenticationFailed('Invalid or expired token.')
 # authentication.py
 
+from rest_framework.authentication import TokenAuthentication
+from allauth.socialaccount.models import SocialToken
+from rest_framework.exceptions import AuthenticationFailed
+from django.utils.timezone import now
+
 class BearerAuthentication(TokenAuthentication):
     keyword = "Bearer"
 
@@ -37,12 +42,24 @@ class BearerAuthentication(TokenAuthentication):
         token = request.headers.get("Authorization")
         if not token:
             return None
-        
-        token_key = token.split("Bearer ")[-1]
+
+        # Extract the token value
+        try:
+            token_key = token.split("Bearer ")[-1].strip()
+        except IndexError:
+            raise AuthenticationFailed("Invalid token format.")
 
         try:
+            # Get the social token
             social_token = SocialToken.objects.get(token=token_key)
-            user = social_token.account.user
-            return (user, None)
         except SocialToken.DoesNotExist:
-            return None
+            raise AuthenticationFailed("Invalid token.")
+
+        # Check if the token is expired
+        if social_token.expires_at and social_token.expires_at < now():
+            raise AuthenticationFailed("Token has expired.")
+
+        # Return authenticated user
+        user = social_token.account.user
+        return (user, None)
+

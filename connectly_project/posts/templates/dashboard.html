@@ -13,14 +13,15 @@
 
                 const data = await response.json();
                 sessionStorage.setItem('googleAccessToken', data.access_token);
+                sessionStorage.setItem('currentUsername', "{{ user.username }}");
                 console.log('Google token stored:', data.access_token);
             } catch (error) {
                 console.error('Error fetching Google token:', error);
             }
         }
 
-        // Call the ProtectedView API when button is clicked
-        async function accessProtectedView() {
+        // Helper function to call APIs with the Google token
+        async function callApi(endpoint, outputElementId) {
             const token = sessionStorage.getItem('googleAccessToken');
             if (!token) {
                 console.error('No Google access token available');
@@ -29,7 +30,7 @@
             }
 
             try {
-                const response = await fetch('/posts/pv/', {
+                const response = await fetch(endpoint, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -40,13 +41,13 @@
                 if (!response.ok) throw new Error('Access denied or invalid token.');
 
                 const data = await response.json();
-                console.log('Protected API Response:', data);
+                console.log(`API Response from ${endpoint}:`, data);
 
                 // Display the API response on the page
-                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+                document.getElementById(outputElementId).textContent = JSON.stringify(data, null, 2);
             } catch (error) {
-                console.error('Error accessing protected view:', error);
-                alert('Error accessing protected view.');
+                console.error(`Error accessing ${endpoint}:`, error);
+                alert(`Error accessing ${endpoint}`);
             }
         }
 
@@ -64,10 +65,20 @@
     <h1>Welcome to the Dashboard</h1>
 
     <!-- Button to call the Protected API -->
-    <button onclick="accessProtectedView()">Access Protected View</button>
+    <button onclick="callApi('/posts/pv/', 'api-response')">Access Protected View</button>
 
-    <!-- Display API Response -->
+    <!-- Button to fetch the list of users -->
+    <button onclick="window.location.href='/posts/user-list/'">Go to User List</button>
+
+    <button onclick="location.href='/posts/feed/'">Go to Post Page</button>
+    
+    <!-- Display API Responses -->
+    <h2>Protected API Response:</h2>
     <pre id="api-response">API Response will appear here...</pre>
+
+    <h2>User List Response:</h2>
+    <pre id="user-list-response">User list will appear here...</pre>
+    
 
     <a href="/accounts/logout/">Logout</a>
 </body>

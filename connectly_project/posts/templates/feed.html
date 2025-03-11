@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Post Page</title>
+    <script>
+        let nextPage = null;
+        let prevPage = null;
+
+        // Fetch posts of the logged-in user
+        async function fetchUserPosts() {
+            try {
+                const token = sessionStorage.getItem('googleAccessToken');
+                const response = await fetch('/posts/paginated-posts/?user_posts=true', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch user posts.');
+
+                const data = await response.json();
+                displayPosts(data.results);
+
+                nextPage = data.next;
+                prevPage = data.previous;
+                updatePaginationButtons();
+            } catch (error) {
+                console.error('Error fetching user posts:', error);
+            }
+        }
+
+        // Fetch paginated posts
+        async function fetchPaginatedPosts(url = '/posts/paginated-posts/') {
+            try {
+                const token = sessionStorage.getItem('googleAccessToken'); // Ensure the token is retrieved
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch paginated posts.');
+
+                const data = await response.json();
+                displayPosts(data.results);
+
+                nextPage = data.next;
+                prevPage = data.previous;
+
+                updatePaginationButtons();
+            } catch (error) {
+                console.error('Error fetching paginated posts:', error);
+            }
+        }
+
+        // Display posts in the DOM
+        function displayPosts(posts) {
+            const postList = document.getElementById('post-list');
+            postList.innerHTML = '';
+
+            const currentUser = sessionStorage.getItem('currentUsername'); // Get logged-in user's name
+
+            posts.forEach(post => {
+                const isLiked = post.is_liked; // This comes from the backend
+                const likeButtonText = isLiked ? 'Unlike' : 'Like';
+                
+                const postItem = document.createElement('li');
+                postItem.innerHTML = `
+                    <strong>${post.title}</strong> - ${post.post_type} <br>
+                    <em>By: ${post.author.username}</em> <br>
+                    ${post.content} <br>
+                    Likes: <span id="like-count-${post.id}">${post.like_count}</span> <br>
+
+                    <!-- Like Button -->
+                    <button id="like-btn-${post.id}" onclick="toggleLike(${post.id}, ${isLiked})">${likeButtonText}</button>
+
+                    <!-- Edit/Delete buttons only for the logged-in user's posts -->
+                    ${post.author.username === currentUser ? `
+                        <button onclick="editPost(${post.id}, '${post.title}', '${post.post_type}', '${post.content.replace(/'/g, "\\'")}')">Edit</button>
+                        <button onclick="deletePost(${post.id})">Delete</button>
+                    ` : ''}
+                `;
+                postList.appendChild(postItem);
+            });
+        }
+
+        // Toggle like for a post
+        async function toggleLike(postId, isLiked) {
+            try {
+                const token = sessionStorage.getItem('googleAccessToken');
+
+                const response = await fetch(`/posts/posts/${postId}/like/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ like: !isLiked }), // Toggle the current state
+                });
+
+                if (!response.ok) throw new Error('Failed to toggle like.');
+
+                const data = await response.json();
+
+                // Update UI with new like count and button state
+                const likeCountElement = document.getElementById(`like-count-${postId}`);
+                const likeButton = document.getElementById(`like-btn-${postId}`);
+
+                likeCountElement.textContent = data.like_count;
+                likeButton.textContent = isLiked ? 'Like' : 'Unlike';
+                likeButton.setAttribute('onclick', `toggleLike(${postId}, ${!isLiked})`);
+
+                alert(data.message); // Feedback to the user
+            } catch (error) {
+                console.error('Error toggling like:', error);
+                alert('Error toggling like.');
+            }
+        }
+
+
+        // Update the pagination buttons
+        function updatePaginationButtons() {
+            document.getElementById('prev-btn').disabled = !prevPage;
+            document.getElementById('next-btn').disabled = !nextPage;
+        }
+
+        // Navigate to the next page
+        function goToNextPage() {
+            if (nextPage) fetchPaginatedPosts(nextPage);
+        }
+
+        // Navigate to the previous page
+        function goToPrevPage() {
+            if (prevPage) fetchPaginatedPosts(prevPage);
+        }
+
+        // Delete a post
+        async function deletePost(postId) {
+            try {
+                const token = sessionStorage.getItem('googleAccessToken');
+                const response = await fetch(`/posts/posts/${postId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete post.');
+                alert('Post deleted successfully!');
+                fetchPaginatedPosts(); // Refresh posts
+            } catch (error) {
+                console.error('Error deleting post:', error);
+                alert('Error deleting post.');
+            }
+        }
+
+        // Create a new post
+        async function createPost(event) {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const postType = document.getElementById('post_type').value;
+            const token = sessionStorage.getItem('googleAccessToken');
+
+            try {
+                const response = await fetch('/posts/posts/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, content, post_type: postType })
+                });
+
+                if (!response.ok) throw new Error('Failed to create post.');
+                alert('Post created successfully!');
+                fetchPaginatedPosts(); // Refresh posts
+            } catch (error) {
+                console.error('Error creating post:', error);
+                alert('Error creating post.');
+            }
+        }
+
+        // Edit a post
+        async function editPost(postId, currentTitle, currentPostType, currentContent) {
+            // Prompt user for new data
+            const newTitle = prompt('Edit Title:', currentTitle);
+            const newContent = prompt('Edit Content:', currentContent);
+
+            if (!newTitle || !newContent) {
+                alert('Editing canceled.');
+                return;
+            }
+
+            try {
+                const token = sessionStorage.getItem('googleAccessToken');
+                const response = await fetch(`/posts/posts/${postId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: newTitle,
+                        content: newContent
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to edit post.');
+                alert('Post updated successfully!');
+                fetchPaginatedPosts(); // Refresh posts
+            } catch (error) {
+                console.error('Error editing post:', error);
+                alert('Error editing post.');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPaginatedPosts();
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Post Management</h1>
+
+    <!-- Create Post Form -->
+    <form id="post-form" onsubmit="createPost(event)">
+        <label for="title">Title:</label>
+        <input type="text" id="title" required>
+        
+        <label for="post_type">Post Type:</label>
+        <input type="text" id="post_type" required>
+        
+        <label for="content">Content:</label>
+        <textarea id="content" required></textarea>
+        
+        <button type="submit">Create Post</button>
+    </form>
+
+    <!-- List of Posts -->
+    <h2>Posts</h2>
+    <ul id="post-list">Loading posts...</ul>
+
+    <!-- Pagination Controls -->
+    <button id="prev-btn" onclick="goToPrevPage()" disabled>Previous Page</button>
+    <button id="next-btn" onclick="goToNextPage()" disabled>Next Page</button>
+    <button onclick="fetchUserPosts()">My Posts</button>
+    <button onclick="fetchPaginatedPosts()">All Posts</button>
+
+    <br><br>
+    <a href="/posts/dashboard/">Back to Dashboard</a>
+</body>
+
+</html>
