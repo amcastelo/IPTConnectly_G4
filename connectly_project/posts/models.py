@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.cache import cache
 
 
 class Post(models.Model):
@@ -13,10 +14,19 @@ class Post(models.Model):
         (VIDEO, 'Video'),
     ]
 
+    PUBLIC = 'public'
+    PRIVATE = 'private'
+
+    PRIVACY_CHOICES = [
+        (PUBLIC, 'Public'),
+        (PRIVATE, 'Private'),
+    ]
+
     title = models.CharField(max_length=255)
     content = models.TextField()
     author = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE)
     post_type = models.CharField(max_length=10, choices=POST_TYPES, default=TEXT)
+    privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default=PUBLIC)
     created_at = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict)
 
@@ -28,6 +38,14 @@ class Post(models.Model):
     
     def comment_count(self):
         return self.comments.count()
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.clear()  # Clear cache when a post is created/updated
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        cache.clear()  # Clear cache when a post is deleted
 
 
 class Comment(models.Model):

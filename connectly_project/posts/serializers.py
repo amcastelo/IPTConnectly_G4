@@ -17,7 +17,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'title', 'post_type', 'content', 'author', 'created_at', 'like_count','is_liked', 'comment_count','comments']
+        fields = ['id', 'title', 'post_type', 'privacy', 'content', 'author', 'created_at', 'like_count','is_liked', 'comment_count','comments']
 
     def validate_author(self, value):
         if not User.objects.filter(id=value.id).exists():

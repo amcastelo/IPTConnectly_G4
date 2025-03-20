@@ -19,6 +19,9 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.exceptions import NotFound
+from django.db.models import Q
+from django.core.cache import cache
+
 
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
@@ -45,24 +48,47 @@ class PaginatedPostList(ListCreateAPIView):
         return context
 
     def get_queryset(self):
-        queryset = Post.objects.all().order_by('-created_at')
         user = self.request.user
-
         liked_param = self.request.query_params.get('liked')
+        user_posts = self.request.query_params.get('user_posts')
 
-        if liked_param == 'true':
-            if user.is_authenticated:
-                queryset = queryset.filter(likes__user=user)
-            else:
-                queryset = Post.objects.none()
+        # Create a unique cache key
+        cache_key = f"paginated_posts_{user.id if user.is_authenticated else 'anon'}_{liked_param}_{user_posts}"
+        cached_queryset = cache.get(cache_key)
 
-        elif liked_param == 'false':
-            if user.is_authenticated:
-                queryset = queryset.exclude(likes__user=user)
+        if cached_queryset:
+            logger.info(f"Cache HIT: {cache_key}")
+            return cached_queryset  # Return cached data if available
+        else:
+            logger.info(f"Cache MISS: {cache_key}")
+
+        queryset = Post.objects.all().order_by('-created_at')
+
+        # Privacy enforcement
+        if user.is_authenticated:
+            if user.is_staff or user.is_superuser:
+                pass  # Admins see everything
             else:
-                queryset = queryset.all()
+                queryset = queryset.filter(Q(privacy='public') | Q(author=user))
+        else:
+            queryset = queryset.filter(privacy='public')
+
+        # Filter by liked/unliked posts
+        if liked_param == 'true' and user.is_authenticated:
+            queryset = queryset.filter(likes__user=user)
+        elif liked_param == 'false' and user.is_authenticated:
+            queryset = queryset.exclude(likes__user=user)
+
+        # Filter by user's own posts
+        if user_posts == 'true' and user.is_authenticated:
+            queryset = queryset.filter(author=user)
+
+        # Store in cache for 5 minutes
+        cache.set(cache_key, queryset, timeout=300)  
 
         return queryset
+
+
 
 def check_google_token(user):
     google_account = SocialAccount.objects.filter(user=user, provider='google').first()
@@ -102,10 +128,20 @@ class UserListCreate(APIView):
 
 
 class PostListCreate(APIView):
+    serializer_class = PostSerializer
     def get(self, request):
         logger.info("Fetching all posts.")
-        posts = Post.objects.all()
-        serializer = PostSerializer(posts, many=True)
+        user = request.user
+
+        # Show public posts + user’s own private posts
+        if user.is_authenticated:
+            posts = Post.objects.filter(
+                Q(privacy='public') | Q(author=user)
+            )
+        else:
+            posts = Post.objects.filter(privacy='public')  # Only public posts for unauthenticated users
+
+        serializer = self.get_serializer(posts, many=True)
         return Response(serializer.data)
 
     def post(self, request):
@@ -121,7 +157,7 @@ class PostListCreate(APIView):
             )
             logger.info(f"Post created successfully: ID {post.id}")
 
-            serializer = PostSerializer(post)
+            serializer = self.get_serializer(post)
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except ValueError as e:
@@ -137,7 +173,7 @@ class PostListCreate(APIView):
             logger.warning(f"Post ID {pk} not found.")
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = PostSerializer(post, data=request.data, partial=True)
+        serializer = self.get_serializer(post, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             logger.info(f"Post ID {pk} updated successfully.")
@@ -171,6 +207,10 @@ class PostListCreate(APIView):
         elif self.request.method in ["POST"]:
             return [BearerAuthentication()]
         return []
+    
+    def get_serializer(self, *args, **kwargs):
+        kwargs.setdefault("context", {"request": self.request})
+        return self.serializer_class(*args, **kwargs)
 
 class CommentListCreate(APIView):
     def get(self, request, pk=None):
@@ -279,7 +319,10 @@ class PostDetailView(APIView):
     def get(self, request, pk):
         try:
             post = Post.objects.prefetch_related('likes', 'comments').get(pk=pk)  # Optimize query
-            self.check_object_permissions(request, post)
+
+            if post.privacy == 'private' and request.user != post.author and not request.user.is_staff:
+                logger.warning(f"Unauthorized access attempt on private post ID {pk} by '{request.user}'.")
+                return Response({"error": "You do not have permission to view this post."}, status=status.HTTP_403_FORBIDDEN)
 
             logger.info(f"Post ID {pk} accessed by user '{request.user}'.")
 
