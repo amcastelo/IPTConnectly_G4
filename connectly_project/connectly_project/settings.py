@@ -208,6 +208,7 @@ SOCIALACCOUNT_STORE_TOKENS = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'posts.authentications.BearerAuthentication',  # Reference to your custom authentication class
+        'rest_framework.authentication.TokenAuthentication',  # DRF's token auth
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

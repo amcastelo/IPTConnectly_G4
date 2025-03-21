@@ -22,10 +22,11 @@ from rest_framework.exceptions import NotFound
 from django.db.models import Q
 from django.core.cache import cache
 
-
+# Initiate logger before API
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
 
+# Pagination structure/format
 class post_pagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = 'page_size'
@@ -37,6 +38,7 @@ class post_pagination(PageNumberPagination):
         except NotFound:
             raise NotFound({"error": "Page does not exist. Please check the page number."})
 
+# Paginated post or feed.
 class PaginatedPostList(ListCreateAPIView):
     queryset = Post.objects.all().order_by('-created_at')
     serializer_class = PostSerializer
@@ -88,8 +90,7 @@ class PaginatedPostList(ListCreateAPIView):
 
         return queryset
 
-
-
+# Checks if google token exist and prints it in console.
 def check_google_token(user):
     google_account = SocialAccount.objects.filter(user=user, provider='google').first()
     if google_account:
@@ -99,9 +100,11 @@ def check_google_token(user):
         else:
             print("❌ No token found!")
 
+# HTML handler
 def login_view(request):
     return render(request, 'login.html')
 
+# User Creation
 class UserListCreate(APIView):
     def get(self, request):
         logger.info("Fetching all users.")
@@ -126,21 +129,24 @@ class UserListCreate(APIView):
             logger.warning("Missing username, password, or email in request.")
             return Response({"error": "Username, password, and email are required."}, status=status.HTTP_400_BAD_REQUEST)
 
+    def get_permissions(self):
+            if self.request.method in ["GET"]:
+                return [IsAuthenticated()] 
+            elif self.request.method in ["POST"]:
+                return []
 
+            return []
+
+# Endpoint for handling posts
 class PostListCreate(APIView):
     serializer_class = PostSerializer
+
+    # Gets Post
     def get(self, request):
         logger.info("Fetching all posts.")
-        user = request.user
-
-        # Show public posts + user’s own private posts
-        if user.is_authenticated:
-            posts = Post.objects.filter(
-                Q(privacy='public') | Q(author=user)
-            )
-        else:
-            posts = Post.objects.filter(privacy='public')  # Only public posts for unauthenticated users
-
+        
+        posts = Post.objects.all()  
+        
         serializer = self.get_serializer(posts, many=True)
         return Response(serializer.data)
 
@@ -153,7 +159,8 @@ class PostListCreate(APIView):
                 title=data['title'],
                 author=request.user.id,
                 content=data.get('content', ''),
-                metadata=data.get('metadata', {})
+                metadata=data.get('metadata', {}),
+                privacy=data['privacy']
             )
             logger.info(f"Post created successfully: ID {post.id}")
 
@@ -199,19 +206,15 @@ class PostListCreate(APIView):
             return [IsAuthenticated(), IsPostAuthorOrAdmin()] 
         elif self.request.method in ["POST"]:
             return [IsAuthenticated()]
+        elif self.request.method in ["GET"]:
+            return [IsAuthenticated(), IsAdmin()]
         return [] 
-    
-    def get_authenticators(self):
-        if self.request.method in ["PATCH", "DELETE"]:
-            return [BearerAuthentication()]
-        elif self.request.method in ["POST"]:
-            return [BearerAuthentication()]
-        return []
     
     def get_serializer(self, *args, **kwargs):
         kwargs.setdefault("context", {"request": self.request})
         return self.serializer_class(*args, **kwargs)
 
+# Endpoint for handling comments
 class CommentListCreate(APIView):
     def get(self, request, pk=None):
 
@@ -280,14 +283,10 @@ class CommentListCreate(APIView):
     
     def get_permissions(self):
         if self.request.method in ["PATCH", "DELETE"]:
-            return [IsAuthenticated(), IsPostAuthorOrAdmin()] 
+            return [IsAuthenticated(), IsPostAuthorOrAdmin()]
         return [] 
-    
-    def get_authenticators(self):
-        if self.request.method in ["POST", "PATCH", "DELETE"]:
-            return [BearerAuthentication()]
-        return []
 
+# Endpoint for handling likes
 class ToggleLikeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -313,6 +312,7 @@ class ToggleLikeView(APIView):
         except Post.DoesNotExist:
             return None
 
+# Endpoint for seeing post in detail
 class PostDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -340,9 +340,8 @@ class PostDetailView(APIView):
             logger.warning(f"Post ID {pk} not found.")
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-
+# Can be used to check if user is authenticated properly
 class ProtectedView(APIView):
-    authentication_classes = [BearerAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

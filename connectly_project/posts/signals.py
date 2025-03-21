@@ -8,6 +8,7 @@ import time
 
 User = get_user_model()
 
+# Links social user model to django's user model
 def link_or_create_user(google_data):
     email = google_data.get('email')
     user = User.objects.filter(email=email).first()
@@ -29,14 +30,7 @@ def handle_google_login(request, sociallogin, **kwargs):
         google_data = sociallogin.account.extra_data
         link_or_create_user(google_data)
 
-# @receiver(user_logged_in)
-# def ensure_social_token(sender, request, user, **kwargs):
-#     from allauth.socialaccount.models import SocialAccount
-#     google_account = SocialAccount.objects.filter(user=user, provider='google').first()
-
-#     if google_account and not SocialToken.objects.filter(account=google_account).exists():
-#         print("Google account linked, but no token found!")
-
+# Checks google token does exist (debugging)
 def check_google_token(user):
     google_account = SocialAccount.objects.filter(user=user, provider='google').first()
     
