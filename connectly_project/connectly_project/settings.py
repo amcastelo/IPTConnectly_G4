@@ -160,7 +160,7 @@ SITE_ID = 1
 
 # Redirects
 LOGIN_REDIRECT_URL = '/posts/dashboard/'
-LOGOUT_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/accounts/google/login/'
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
